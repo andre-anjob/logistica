@@ -1,264 +1,164 @@
 # Portal Logístico — Rastreamento de Frota
 
-Portal web em Python + Streamlit para análise de rastreamento GPS de frota.
-O sistema carrega CSVs de coordenadas, consolida os dados em DuckDB, calcula
-KPIs, gera gráficos Plotly, exibe mapas interativos com PyDeck e permite análises
-por veículo e por período.
+Esse portal nasceu de uma necessidade real: acompanhar onde a frota está, quanto está rodando, onde para e por quanto tempo — tudo num lugar só, acessível de qualquer computador.
+
+Ele lê os CSVs de rastreamento GPS, processa e guarda tudo num banco DuckDB, e entrega dashboards, mapas e análises de forma rápida. Os arquivos ficam salvos no Google Drive, então os dados persistem mesmo quando o servidor reinicia.
 
 ---
 
-## 1. Sobre o projeto
+## O que você vai encontrar aqui
 
-| Componente | Tecnologia |
-|------------|-----------|
-| Interface  | Streamlit  |
-| Banco de dados | DuckDB (em disco local ou temporário no Cloud) |
-| Mapas | PyDeck (WebGL via deck.gl) |
-| Gráficos | Plotly |
-| Storage dos CSVs | Google Drive (Cloud) ou `data/uploads/` (local) |
+**Dashboard** — uma visão geral da frota com km rodados, ranking de alertas de velocidade, evolução diária e heatmap de atividade por hora.
 
-### Páginas disponíveis
+**Mapa de Rotas** — o mapa mais útil do portal. Você escolhe um dia e um veículo e vê a rota colorida por velocidade (verde normal, amarelo atenção, vermelho excesso). Ao passar o mouse sobre a linha, aparece a velocidade exata naquele ponto. Círculos azuis marcam paradas, laranjas indicam onde o veículo ficou parado com ignição desligada — útil para identificar riscos de desvio. Amarelos mostram onde o motor ficou ligado parado, desperdiçando combustível.
 
-| Página | Descrição |
-|--------|-----------|
-| Dashboard Geral | KPIs, km por veículo, evolução diária, ranking de alertas, heatmap de atividade |
-| Mapa de Rotas | Mapa interativo por dia e veículo com cores por faixa de velocidade |
-| Análise por Veículo | KPIs individuais, gráficos diários, exportação para Excel |
-| Histórico | Comparativo entre dois períodos com variação percentual |
-| Upload de Dados | Envio, validação, listagem e remoção de CSVs |
+**Análise por Veículo** — mergulha nos dados de um veículo específico: KPIs, gráficos diários, tabela detalhada e exportação para Excel.
+
+**Histórico** — compara dois períodos lado a lado. Bom para ver se o comportamento da frota melhorou ou piorou.
+
+**Upload de Dados** — onde você envia os CSVs. O portal valida tudo antes de salvar.
 
 ---
 
-## 2. Como rodar localmente
+## Rodando localmente
 
-### Pré-requisitos
-
-- Python 3.11 ou superior
-- Git
-
-### Instalação
+Você vai precisar de Python 3.11+ e Git instalados.
 
 ```bash
-git clone https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
-cd SEU_REPOSITORIO
+git clone https://github.com/SEU_USUARIO/logistica.git
+cd logistica
 python -m venv .venv
 ```
 
-**Windows (PowerShell):**
+Ative o ambiente virtual:
+
 ```powershell
+# Windows
 .\.venv\Scripts\Activate.ps1
 ```
-
-**Linux / macOS:**
 ```bash
+# Linux / macOS
 source .venv/bin/activate
 ```
+
+Instale as dependências:
 
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Configuração do `secrets.toml` (somente se usar Google Drive)
-
-Copie o template e preencha com os valores reais:
-
-```bash
-cp .streamlit/secrets.toml .streamlit/secrets.toml.template  # mantém backup
-# edite .streamlit/secrets.toml com seus valores
-```
-
-> **⚠️ Nunca versione o `secrets.toml` com valores reais no Git.**
-
-### Iniciar o portal
+Suba o portal:
 
 ```bash
 streamlit run app.py
 ```
 
-Acesse em: `http://localhost:8501`
-
-### Modo sem Google Drive (local puro)
-
-Sem o `secrets.toml` ou sem a seção `[google_drive]`, o portal funciona
-completamente offline: os CSVs são salvos em `data/uploads/` e o DuckDB em
-`data/frota.duckdb`.
+Acesse em `http://localhost:8501`. Se você ainda não conectou o Google Drive, tudo bem — o portal funciona normalmente em modo local, salvando os CSVs em `data/uploads/`.
 
 ---
 
-## 3. Como configurar o Google Drive
+## Conectando ao Google Drive
 
-### 3.1 — Criar projeto no Google Cloud Console
+Essa etapa permite que os dados sobrevivam ao reinício do servidor e fiquem acessíveis de qualquer máquina. São cerca de 10 minutos de configuração.
 
-1. Acesse [console.cloud.google.com](https://console.cloud.google.com)
-2. Clique em **Selecionar projeto → Novo projeto**
-3. Dê um nome (ex.: `portal-logistico`) e clique em **Criar**
+### 1. Criar o projeto no Google Cloud
 
-### 3.2 — Ativar a Google Drive API
+Entre em [console.cloud.google.com](https://console.cloud.google.com), crie um projeto novo (pode chamar de `painel-logistico`) e ative a **Google Drive API** em *APIs e serviços → Biblioteca*.
 
-1. No menu lateral: **APIs e serviços → Biblioteca**
-2. Pesquise por **Google Drive API** e clique em **Ativar**
+### 2. Criar a conta de serviço
 
-### 3.3 — Criar Service Account e baixar a chave JSON
+Vá em *IAM e administrador → Contas de serviço → Criar conta de serviço*. Dê um nome como `portal-frota` e finalize. Não precisa atribuir nenhum papel.
 
-1. Vá em **IAM e administrador → Contas de serviço**
-2. Clique em **Criar conta de serviço**
-3. Preencha o nome (ex.: `portal-frota`) e clique em **Criar e continuar**
-4. Na etapa de permissões, clique em **Continuar** (sem papel necessário)
-5. Clique em **Concluído**
-6. Clique na conta de serviço criada → aba **Chaves** → **Adicionar chave → Criar nova chave → JSON**
-7. Salve o arquivo `.json` baixado em local seguro
+Depois clique na conta criada, vá na aba **Chaves** e crie uma chave no formato **JSON**. Um arquivo será baixado — guarde ele bem, ele não pode ser recuperado depois.
 
-### 3.4 — Compartilhar a pasta do Drive com a Service Account
+### 3. Compartilhar a pasta do Drive
 
-1. Crie (ou selecione) uma pasta no Google Drive que guardará os CSVs
-2. Clique com o botão direito na pasta → **Compartilhar**
-3. No campo de e-mail, cole o valor do campo `client_email` do JSON baixado
-4. Defina permissão como **Editor** e clique em **Enviar**
-5. Copie o **ID da pasta**: ele aparece na URL do Drive após `/folders/`
-   Ex.: `https://drive.google.com/drive/folders/1AbCdEfGhIjKl` → ID: `1AbCdEfGhIjKl`
+Crie uma pasta no Google Drive para guardar os CSVs da frota. Clique com o botão direito nela → **Compartilhar** → cole o e-mail que aparece no campo `client_email` do JSON baixado → defina como **Editor**.
 
-### 3.5 — Preencher o `secrets.toml`
+O ID da pasta está na URL quando você abre ela:
+`drive.google.com/drive/folders/`**`ESTE_TRECHO_É_O_ID`**
 
-Abra `.streamlit/secrets.toml` e preencha com os campos do JSON baixado:
+### 4. Preencher o secrets.toml
+
+Abra `.streamlit/secrets.toml`, descomente a seção `[google_drive]` e preencha com os valores do JSON:
 
 ```toml
 [google_drive]
 type             = "service_account"
-project_id       = "seu-projeto-id"          # campo "project_id" do JSON
-private_key_id   = "abc123..."               # campo "private_key_id" do JSON
-private_key      = "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
-client_email     = "portal-frota@seu-projeto.iam.gserviceaccount.com"
-client_id        = "123456789"               # campo "client_id" do JSON
+project_id       = "painel-logistico"
+private_key_id   = "valor do JSON"
+private_key      = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+client_email     = "portal-frota@painel-logistico.iam.gserviceaccount.com"
+client_id        = "valor do JSON"
 auth_uri         = "https://accounts.google.com/o/oauth2/auth"
 token_uri        = "https://oauth2.googleapis.com/token"
-folder_id        = "1AbCdEfGhIjKl"           # ID da pasta do Drive
+folder_id        = "ID_DA_PASTA_DO_DRIVE"
 ```
 
-> **Atenção:** copie `private_key` exatamente como está no JSON, incluindo os
-> `\n` literais — o portal converte automaticamente para quebras de linha reais.
+> ⚠️ O `private_key` deve ser copiado exatamente como está no JSON, com os `\n` literais — o portal converte automaticamente.
+>
+> ⚠️ Nunca suba esse arquivo com valores reais pro Git. O `.gitignore` já o exclui por padrão.
 
 ---
 
-## 4. Como fazer deploy no Streamlit Community Cloud
+## Publicando no Streamlit Community Cloud
 
-### 4.1 — Publicar o código no GitHub
+Primeiro garanta que o código está no GitHub:
 
 ```bash
-git init                          # se ainda não for um repositório
 git add .
-git commit -m "Portal logístico — versão inicial"
-git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
-git push -u origin main
+git commit -m "versão inicial"
+git push origin main
 ```
 
-> O `.gitignore` já exclui `secrets.toml`, `*.duckdb` e `data/uploads/*.csv`.
+Depois:
 
-### 4.2 — Criar o app no Streamlit Community Cloud
+1. Acesse [share.streamlit.io](https://share.streamlit.io) e conecte sua conta GitHub
+2. Clique em **New app** → selecione o repositório → branch `main` → arquivo `app.py`
+3. Antes de clicar em Deploy, abra **Advanced settings → Secrets** e cole o conteúdo do seu `secrets.toml` com os valores reais
+4. Deploy!
 
-1. Acesse [share.streamlit.io](https://share.streamlit.io) e faça login com GitHub
-2. Clique em **New app**
-3. Selecione o repositório e a branch (`main`)
-4. Defina o arquivo principal: `app.py`
-5. Clique em **Advanced settings** (próximo passo antes de deployar)
-
-### 4.3 — Configurar os Secrets no painel
-
-1. Na tela de **Advanced settings**, clique na aba **Secrets**
-2. Cole o conteúdo completo do seu `secrets.toml` local (com valores reais)
-3. Clique em **Save**
-
-### 4.4 — Fazer o deploy
-
-1. Clique em **Deploy!**
-2. Aguarde a instalação das dependências (1–3 minutos)
-3. O app ficará disponível em `https://seu-usuario-seu-repositorio-main.streamlit.app`
-
-### 4.5 — Atualizações futuras
-
-Basta fazer `git push origin main` — o Streamlit Cloud detecta automaticamente
-e redeploya o app.
+Em 2 ou 3 minutos o portal estará no ar com uma URL pública. Quando você fizer `git push` no futuro, o Streamlit Cloud detecta e atualiza automaticamente.
 
 ---
 
-## 5. Como adicionar novos CSVs
+## Adicionando novos dados
 
-### Via portal (recomendado)
+A forma mais fácil é pelo próprio portal: acesse **Upload de Dados**, arraste os CSVs e pronto. O portal valida as colunas, descarta coordenadas inválidas e já deixa os dados disponíveis nas outras páginas.
 
-1. Abra o portal e acesse **Upload de Dados** no menu lateral
-2. Clique em **Browse files** e selecione um ou mais CSVs
-3. O portal valida as colunas, descarta coordenadas inválidas e:
-   - **Modo Drive:** envia para a pasta do Google Drive configurada
-   - **Modo local:** salva em `data/uploads/`
-4. Os dados ficam disponíveis imediatamente nas demais páginas
-
-### Formato esperado do CSV
-
-O arquivo deve conter exatamente estas colunas (separador `,` ou `;`):
+O arquivo precisa ter essas colunas (separador vírgula ou ponto-e-vírgula):
 
 ```
-Veículo | Placa | Organização | Data da Coordenada | Data da Gravação |
-Velocidade | Ignição | Serial | Posição
+Veículo, Placa, Organização, Data da Coordenada, Data da Gravação,
+Velocidade, Ignição, Serial, Posição
 ```
 
-A coluna `Posição` deve estar no formato `latitude,longitude`:
-```
-"-3.789100,-38.512300"
-```
-
-Datas no formato brasileiro: `dd/mm/aaaa HH:MM:SS`
+A coluna `Posição` deve vir no formato `latitude,longitude` — por exemplo: `"-3.789100,-38.512300"`. Datas no padrão brasileiro: `dd/mm/aaaa HH:MM:SS`.
 
 ---
 
-## 6. Uso via linha de comando (CLI)
-
-O fluxo CLI foi preservado em `main_cli.py` para geração de relatórios e mapas
-HTML fora do Streamlit:
-
-```bash
-python main_cli.py \
-  --arquivo "data/uploads/arquivo.csv" \
-  --data 09/05/2026 \
-  --veiculo 1060
-```
-
-Adicione `--sem-mapa` para pular a geração do mapa HTML (mais rápido).
-
----
-
-## 7. Estrutura do projeto
+## Estrutura do projeto
 
 ```
-├── app.py                  # Página inicial (Home)
-├── config.py               # Constantes globais
-├── requirements.txt        # Dependências Python
-├── main_cli.py             # Interface de linha de comando
+├── app.py                  # Página inicial
+├── config.py               # Configurações globais
+├── requirements.txt        # Dependências
 ├── .streamlit/
 │   ├── config.toml         # Configurações do Streamlit
-│   └── secrets.toml        # Credenciais (NÃO versionar com valores reais)
-├── pages/
-│   ├── 1_Dashboard.py
-│   ├── 2_Mapa_de_Rotas.py
-│   ├── 3_Analise_por_Veiculo.py
-│   ├── 4_Historico.py
-│   └── 5_Upload_de_Dados.py
+│   └── secrets.toml        # Credenciais (não versionar com valores reais)
+├── pages/                  # As 5 páginas do portal
 ├── core/
-│   ├── cache_manager.py    # Orquestra Drive vs. local
-│   ├── database.py         # Camada DuckDB (consultas SQL)
-│   ├── drive_manager.py    # Integração Google Drive
-│   ├── loader.py           # Leitura e limpeza de CSVs
-│   ├── processor.py        # Classificação de paradas
-│   ├── routes.py           # Agrupamento e análise de rotas
-│   ├── analytics.py        # KPIs e resumo diário
+│   ├── cache_manager.py    # Decide entre Drive e modo local
+│   ├── database.py         # Consultas SQL via DuckDB
+│   ├── drive_manager.py    # Integração com o Google Drive
+│   ├── loader.py           # Leitura e limpeza dos CSVs
+│   ├── processor.py        # Detecção de paradas
+│   ├── routes.py           # Análise de rotas por veículo/dia
+│   ├── analytics.py        # KPIs e resumos
 │   ├── stats.py            # Estatísticas de velocidade e ignição
-│   └── map_builder.py      # Mapas Folium (CLI) e PyDeck (portal)
-├── components/
-│   ├── filters.py          # Filtros da sidebar
-│   ├── charts.py           # Gráficos Plotly
-│   └── kpi_cards.py        # Cards de métricas
-├── utils/
-│   └── helpers.py          # Funções auxiliares
-└── data/
-    └── uploads/            # CSVs locais (excluídos do Git)
+│   └── map_builder.py      # Mapas (Folium para CLI, PyDeck para o portal)
+├── components/             # Gráficos, filtros e cards reutilizáveis
+├── utils/                  # Funções auxiliares
+└── data/uploads/           # CSVs locais (excluídos do Git)
 ```
