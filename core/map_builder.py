@@ -422,10 +422,7 @@ def _camada_ignicao_desligada(route: pd.DataFrame) -> Any | None:
         )
         .reset_index()
     )
-    # Raio proporcional à duração em minutos
-    grouped["radius"] = grouped["duracao_min"].apply(
-        lambda d: max(55.0, min(320.0, 55.0 + float(d) * 5.0))
-    )
+    grouped["radius"] = 60  # raio fixo em metros
     grouped["label"] = (
         "🔴 Ignição desligada — " + grouped["duracao_min"].astype(str) + " min"
     )
