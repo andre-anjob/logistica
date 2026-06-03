@@ -157,7 +157,7 @@ def _renderizar_rota(
     with col_map:
         st.pydeck_chart(deck, height=550)
     with col_report:
-        st.text(build_text_report(summary, stats, "renderizado no portal"))
+        _renderizar_cards_rota(summary, stats)
 
 
 def _renderizar_todas_rotas(
@@ -197,6 +197,63 @@ def _renderizar_todas_rotas(
         st.metric("Registros", f"{total_registros:,}".replace(",", "."))
         st.metric("Alertas", total_alertas)
         st.metric("Paradas", len(stops))
+
+
+def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
+    """Exibe o resumo da rota como cards com st.metric."""
+    veiculo = summary.get("Veículo", "—")
+    placa   = summary.get("Placa", "—")
+    inicio  = summary.get("inicio")
+    fim     = summary.get("fim")
+    dist_km = float(summary.get("distancia_km", 0))
+    t_mov   = float(summary.get("tempo_movimento_segundos", 0))
+    t_par   = float(summary.get("tempo_parado_segundos", 0))
+
+    vel_med = float(stats.get("velocidade_media", 0))
+    vel_max = float(stats.get("velocidade_maxima", 0))
+    alertas = int(stats.get("alertas_velocidade", 0))
+    paradas = int(stats.get("quantidade_paradas", 0))
+    dur_med = float(stats.get("duracao_media_parada_minutos", 0))
+    ign_lig = float(stats.get("percentual_ignicao_ligada", 0))
+    ign_des = float(stats.get("percentual_ignicao_desligada", 0))
+
+    def _fmt_hm(segundos: float) -> str:
+        h, r = divmod(int(max(segundos, 0)), 3600)
+        return f"{h:02d}:{r // 60:02d}"
+
+    st.markdown(f"### {veiculo}")
+    st.caption(f"Placa: **{placa}**")
+    st.divider()
+
+    st.metric("📍 Distância", f"{dist_km:.1f} km")
+
+    c1, c2 = st.columns(2)
+    c1.metric("🕐 Início", inicio.strftime("%H:%M") if inicio else "—")
+    c2.metric("🕑 Fim",    fim.strftime("%H:%M")    if fim    else "—")
+
+    st.divider()
+
+    c3, c4 = st.columns(2)
+    c3.metric("⚡ Vel. média",   f"{vel_med:.1f} km/h")
+    c4.metric("🚀 Vel. máxima",  f"{vel_max:.1f} km/h")
+
+    st.metric("🚨 Alertas velocidade", alertas)
+
+    st.divider()
+
+    c5, c6 = st.columns(2)
+    c5.metric("▶️ Movimento", _fmt_hm(t_mov))
+    c6.metric("⏸️ Parado",    _fmt_hm(t_par))
+
+    c7, c8 = st.columns(2)
+    c7.metric("🅿️ Paradas",     paradas)
+    c8.metric("⏱️ Média parada", f"{dur_med:.0f} min" if paradas else "—")
+
+    st.divider()
+
+    c9, c10 = st.columns(2)
+    c9.metric("🟢 Ign. ligada",    f"{ign_lig:.1f}%")
+    c10.metric("🔴 Ign. desligada", f"{ign_des:.1f}%")
 
 
 main()
