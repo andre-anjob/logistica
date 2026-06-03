@@ -104,6 +104,7 @@ def build_pydeck_layers(
     show_stops: bool = True,
     veiculo_label: str = "",
     min_ignicao_off_min: float = 0.0,
+    min_ignicao_on_min: float = 0.0,
 ) -> tuple[list, Any]:
     """Constrói as camadas PyDeck para uma única rota.
 
@@ -157,10 +158,15 @@ def build_pydeck_layers(
     if show_stops and not stops_df.empty:
         layers.append(_camada_paradas(stops_df))
 
-    # Paradas com ignição desligada — círculos laranjas filtrados por duração mínima
-    layer_ignicao = _camada_ignicao_desligada(route, min_ignicao_off_min)
-    if layer_ignicao is not None:
-        layers.append(layer_ignicao)
+    # Paradas com ignição desligada — círculos laranjas
+    layer_ignicao_off = _camada_ignicao_desligada(route, min_ignicao_off_min)
+    if layer_ignicao_off is not None:
+        layers.append(layer_ignicao_off)
+
+    # Paradas com ignição ligada (motor ocioso) — círculos amarelos
+    layer_ignicao_on = _camada_ignicao_ligada(route, min_ignicao_on_min)
+    if layer_ignicao_on is not None:
+        layers.append(layer_ignicao_on)
 
     view_state = pdk.ViewState(
         latitude=float(route[LATITUDE_COLUMN].median()),
@@ -179,6 +185,7 @@ def build_pydeck_layers_multi(
     show_alerts: bool = True,
     show_stops: bool = True,
     min_ignicao_off_min: float = 0.0,
+    min_ignicao_on_min: float = 0.0,
 ) -> tuple[list, Any]:
     """Constrói camadas PyDeck para múltiplos veículos.
 
@@ -249,10 +256,15 @@ def build_pydeck_layers_multi(
             if layer_alertas is not None:
                 layers.append(layer_alertas)
 
-        # Paradas com ignição desligada por veículo (filtradas por duração mínima)
-        layer_ignicao = _camada_ignicao_desligada(route, min_ignicao_off_min)
-        if layer_ignicao is not None:
-            layers.append(layer_ignicao)
+        # Paradas com ignição desligada — laranjas
+        layer_ignicao_off = _camada_ignicao_desligada(route, min_ignicao_off_min)
+        if layer_ignicao_off is not None:
+            layers.append(layer_ignicao_off)
+
+        # Paradas com ignição ligada (motor ocioso) — amarelas
+        layer_ignicao_on = _camada_ignicao_ligada(route, min_ignicao_on_min)
+        if layer_ignicao_on is not None:
+            layers.append(layer_ignicao_on)
 
     # Paradas de todos os veículos do dia
     if show_stops and not stops_df.empty:
@@ -454,6 +466,69 @@ def _camada_ignicao_desligada(
         get_radius="radius",
         get_fill_color=[237, 137, 54, 190],   # laranja semitransparente
         get_line_color=[200, 90, 20],
+        line_width_min_pixels=1,
+        pickable=True,
+        stroked=True,
+        filled=True,
+        auto_highlight=True,
+    )
+
+
+def _camada_ignicao_ligada(
+    route: pd.DataFrame,
+    min_minutos: float = 0.0,
+) -> Any | None:
+    """ScatterplotLayer amarela para paradas onde a ignição estava ligada (motor ocioso).
+
+    Args:
+        route: DataFrame enriquecido com colunas de parada.
+        min_minutos: Duração mínima em minutos para exibir a parada.
+
+    Retorna None quando não há paradas com ignição ligada ou nenhuma
+    atinge o tempo mínimo.
+    """
+    if IS_STOP_COLUMN not in route.columns or STOP_ID_COLUMN not in route.columns:
+        return None
+
+    ignicao_on = route["Ignição"].astype(str).str.strip().str.casefold() == "ligada"
+    parada_on = route.loc[route[IS_STOP_COLUMN] & ignicao_on]
+
+    if parada_on.empty:
+        return None
+
+    def _duracao_min(x: pd.Series) -> float:
+        delta = x.max() - x.min()
+        return round(delta.total_seconds() / 60, 1)
+
+    grouped = (
+        parada_on.groupby(STOP_ID_COLUMN, observed=True)
+        .agg(
+            lon=(LONGITUDE_COLUMN, "median"),
+            lat=(LATITUDE_COLUMN, "median"),
+            duracao_min=("Data da Coordenada", _duracao_min),
+        )
+        .reset_index()
+    )
+
+    if min_minutos > 0:
+        grouped = grouped.loc[grouped["duracao_min"] >= min_minutos]
+
+    if grouped.empty:
+        return None
+
+    grouped["radius"] = 60  # raio fixo em metros
+    grouped["label"] = (
+        "🟡 Ignição ligada parada — " + grouped["duracao_min"].astype(str) + " min"
+    )
+    grouped["Velocidade"] = ""
+
+    return pdk.Layer(
+        "ScatterplotLayer",
+        data=grouped,
+        get_position=["lon", "lat"],
+        get_radius="radius",
+        get_fill_color=[246, 173, 85, 190],   # amarelo âmbar semitransparente
+        get_line_color=[200, 130, 20],
         line_width_min_pixels=1,
         pickable=True,
         stroked=True,
