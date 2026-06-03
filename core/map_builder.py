@@ -367,15 +367,12 @@ def _camada_alertas(
     if alertas.empty:
         return None
 
+    vel = alertas["Velocidade"].astype(float).round(1)
+    prefixo = f"{veiculo} — " if veiculo else ""
     data = pd.DataFrame({
         "lon": alertas[LONGITUDE_COLUMN].astype(float).values,
         "lat": alertas[LATITUDE_COLUMN].astype(float).values,
-        "Velocidade": alertas["Velocidade"].astype(float).round(1).values,
-        "label": (
-            (f"{veiculo} — " if veiculo else "")
-            + alertas["Velocidade"].astype(float).round(1).astype(str)
-            + " km/h"
-        ).values,
+        "label": (prefixo + "⚠️ " + vel.astype(str) + " km/h").values,
     })
 
     return pdk.Layer(
@@ -411,21 +408,29 @@ def _camada_ignicao_desligada(route: pd.DataFrame) -> Any | None:
     if parada_off.empty:
         return None
 
-    # Um ponto representativo por parada (mediana de lat/lon)
+    # Um ponto representativo por parada (mediana de lat/lon + duração real)
+    def _duracao_min(x: pd.Series) -> float:
+        delta = x.max() - x.min()
+        return round(delta.total_seconds() / 60, 1)
+
     grouped = (
         parada_off.groupby(STOP_ID_COLUMN, observed=True)
         .agg(
             lon=(LONGITUDE_COLUMN, "median"),
             lat=(LATITUDE_COLUMN, "median"),
-            n_registros=(LATITUDE_COLUMN, "count"),
+            duracao_min=("Data da Coordenada", _duracao_min),
         )
         .reset_index()
     )
-    # Raio proporcional à quantidade de registros (proxy da duração)
-    grouped["radius"] = grouped["n_registros"].apply(
-        lambda n: max(55.0, min(320.0, 55.0 + float(n) * 2.0))
+    # Raio proporcional à duração em minutos
+    grouped["radius"] = grouped["duracao_min"].apply(
+        lambda d: max(55.0, min(320.0, 55.0 + float(d) * 5.0))
     )
-    grouped["label"] = "Ignição desligada (" + grouped["n_registros"].astype(str) + " pts)"
+    grouped["label"] = (
+        "🔴 Ignição desligada — " + grouped["duracao_min"].astype(str) + " min"
+    )
+    # Campo vazio para evitar que o tooltip global mostre {Velocidade} literal
+    grouped["Velocidade"] = ""
 
     return pdk.Layer(
         "ScatterplotLayer",

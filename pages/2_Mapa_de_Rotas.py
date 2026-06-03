@@ -22,11 +22,11 @@ from core.routes import analyze_route, filter_stops_for_route, iter_vehicle_day_
 from core.stats import calculate_route_stats
 
 _TOOLTIP = {
-    "html": "<b>{label}</b><br/>Vel: {Velocidade} km/h",
+    "html": "<b>{label}</b>",
     "style": {
         "backgroundColor": "rgba(0,0,0,0.72)",
         "color": "white",
-        "fontSize": "12px",
+        "fontSize": "13px",
         "padding": "6px 10px",
         "borderRadius": "4px",
     },
