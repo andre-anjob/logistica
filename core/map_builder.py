@@ -450,9 +450,7 @@ def _camada_paradas(stops_df: pd.DataFrame) -> Any:
         "lon": stops_df[LONGITUDE_COLUMN].astype(float).values,
         "lat": stops_df[LATITUDE_COLUMN].astype(float).values,
         "duracao_minutos": stops_df["duracao_minutos"].astype(float).values,
-        "radius": stops_df["duracao_minutos"].astype(float).apply(
-            lambda d: max(50.0, min(300.0, 50.0 + d * 5.0))
-        ).values,
+        "radius": 60,  # raio fixo em metros
         "label": ("Parada: " + stops_df["duracao_minutos"].astype(float).round(1).astype(str) + " min").values,
     })
 
