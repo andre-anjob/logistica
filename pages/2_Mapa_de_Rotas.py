@@ -93,6 +93,17 @@ def main() -> None:
             value=True,
             key="mapa_mostrar_paradas",
         )
+        st.sidebar.markdown("**🔴 Ignição desligada**")
+        min_ignicao_off = st.sidebar.slider(
+            "Tempo mínimo parado (min)",
+            min_value=0,
+            max_value=120,
+            value=10,
+            step=5,
+            key="mapa_min_ignicao_off",
+            help="Exibe apenas paradas com ignição desligada acima deste tempo. "
+                 "Use para identificar riscos de desvio de resíduo.",
+        )
 
         if selected_vehicle != "Todos":
             day_df = day_df.loc[day_df["Veículo"].astype(str) == selected_vehicle].copy()
@@ -105,7 +116,10 @@ def main() -> None:
         routes = list(iter_vehicle_day_routes(enriched))
 
         if selected_vehicle == "Todos" and len(routes) > 1:
-            _renderizar_todas_rotas(routes, stops, float(limite), mostrar_alertas, mostrar_paradas)
+            _renderizar_todas_rotas(
+                routes, stops, float(limite),
+                mostrar_alertas, mostrar_paradas, float(min_ignicao_off),
+            )
         else:
             vehicle, plate, route_date = routes[0][0]
             _renderizar_rota(
@@ -117,6 +131,7 @@ def main() -> None:
                 float(limite),
                 mostrar_alertas,
                 mostrar_paradas,
+                float(min_ignicao_off),
             )
     except Exception as exc:
         st.error(f"Não foi possível renderizar o mapa: {exc}")
@@ -131,6 +146,7 @@ def _renderizar_rota(
     limite: float,
     mostrar_alertas: bool,
     mostrar_paradas: bool,
+    min_ignicao_off: float = 0.0,
 ) -> None:
     """Renderiza o mapa PyDeck e o painel de resumo para um único veículo."""
     route_stops = filter_stops_for_route(stops, vehicle, plate, route_date)
@@ -144,6 +160,7 @@ def _renderizar_rota(
         show_alerts=mostrar_alertas,
         show_stops=mostrar_paradas,
         veiculo_label=f"{vehicle} — {plate}",
+        min_ignicao_off_min=min_ignicao_off,
     )
 
     deck = pdk.Deck(
@@ -166,6 +183,7 @@ def _renderizar_todas_rotas(
     limite: float,
     mostrar_alertas: bool,
     mostrar_paradas: bool,
+    min_ignicao_off: float = 0.0,
 ) -> None:
     """Renderiza o mapa PyDeck com todos os veículos do dia e o painel de resumo."""
     layers, view_state = build_pydeck_layers_multi(
@@ -174,6 +192,7 @@ def _renderizar_todas_rotas(
         limite,
         show_alerts=mostrar_alertas,
         show_stops=mostrar_paradas,
+        min_ignicao_off_min=min_ignicao_off,
     )
 
     deck = pdk.Deck(

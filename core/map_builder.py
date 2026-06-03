@@ -103,6 +103,7 @@ def build_pydeck_layers(
     show_alerts: bool = True,
     show_stops: bool = True,
     veiculo_label: str = "",
+    min_ignicao_off_min: float = 0.0,
 ) -> tuple[list, Any]:
     """Constrói as camadas PyDeck para uma única rota.
 
@@ -113,6 +114,7 @@ def build_pydeck_layers(
         show_alerts: Se True, inclui camada de alertas.
         show_stops: Se True, inclui camada de paradas.
         veiculo_label: Nome do veículo para tooltips.
+        min_ignicao_off_min: Duração mínima (min) para exibir parada com ignição desligada.
 
     Returns:
         Tupla (lista de layers pydeck, pdk.ViewState centralizado na rota).
@@ -155,8 +157,8 @@ def build_pydeck_layers(
     if show_stops and not stops_df.empty:
         layers.append(_camada_paradas(stops_df))
 
-    # Paradas com ignição desligada — círculos laranjas por cima das paradas azuis
-    layer_ignicao = _camada_ignicao_desligada(route)
+    # Paradas com ignição desligada — círculos laranjas filtrados por duração mínima
+    layer_ignicao = _camada_ignicao_desligada(route, min_ignicao_off_min)
     if layer_ignicao is not None:
         layers.append(layer_ignicao)
 
@@ -176,6 +178,7 @@ def build_pydeck_layers_multi(
     speed_limit: float,
     show_alerts: bool = True,
     show_stops: bool = True,
+    min_ignicao_off_min: float = 0.0,
 ) -> tuple[list, Any]:
     """Constrói camadas PyDeck para múltiplos veículos.
 
@@ -189,6 +192,7 @@ def build_pydeck_layers_multi(
         speed_limit: Limite para alertas.
         show_alerts: Se True, inclui camada de alertas por veículo.
         show_stops: Se True, inclui camada de paradas geral.
+        min_ignicao_off_min: Duração mínima (min) para exibir parada com ignição desligada.
 
     Returns:
         Tupla (lista de layers, pdk.ViewState centrado em todos os pontos).
@@ -245,8 +249,8 @@ def build_pydeck_layers_multi(
             if layer_alertas is not None:
                 layers.append(layer_alertas)
 
-        # Paradas com ignição desligada por veículo
-        layer_ignicao = _camada_ignicao_desligada(route)
+        # Paradas com ignição desligada por veículo (filtradas por duração mínima)
+        layer_ignicao = _camada_ignicao_desligada(route, min_ignicao_off_min)
         if layer_ignicao is not None:
             layers.append(layer_ignicao)
 
@@ -388,15 +392,22 @@ def _camada_alertas(
     )
 
 
-def _camada_ignicao_desligada(route: pd.DataFrame) -> Any | None:
+def _camada_ignicao_desligada(
+    route: pd.DataFrame,
+    min_minutos: float = 0.0,
+) -> Any | None:
     """ScatterplotLayer laranja para paradas onde a ignição estava desligada.
 
     Usa o DataFrame enriquecido pelo classify_stops (que contém as colunas
     IS_STOP_COLUMN e STOP_ID_COLUMN). Cada parada com ignição off é
     representada por um círculo laranja no ponto mediano da sequência.
 
-    Retorna None quando o DataFrame não vem de classify_stops ou
-    não há paradas com ignição desligada.
+    Args:
+        route: DataFrame enriquecido com colunas de parada.
+        min_minutos: Duração mínima em minutos para exibir a parada.
+
+    Retorna None quando o DataFrame não vem de classify_stops,
+    não há paradas com ignição desligada ou nenhuma atinge o tempo mínimo.
     """
     # Só funciona com o DataFrame enriquecido (tem as colunas de parada)
     if IS_STOP_COLUMN not in route.columns or STOP_ID_COLUMN not in route.columns:
@@ -422,6 +433,13 @@ def _camada_ignicao_desligada(route: pd.DataFrame) -> Any | None:
         )
         .reset_index()
     )
+    # Aplica filtro de duração mínima
+    if min_minutos > 0:
+        grouped = grouped.loc[grouped["duracao_min"] >= min_minutos]
+
+    if grouped.empty:
+        return None
+
     grouped["radius"] = 60  # raio fixo em metros
     grouped["label"] = (
         "🔴 Ignição desligada — " + grouped["duracao_min"].astype(str) + " min"
