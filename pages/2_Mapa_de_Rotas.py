@@ -200,7 +200,7 @@ def _renderizar_todas_rotas(
 
 
 def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
-    """Exibe o resumo da rota como cards com st.metric."""
+    """Exibe o resumo da rota em layout compacto e minimalista."""
     veiculo = summary.get("Veículo", "—")
     placa   = summary.get("Placa", "—")
     inicio  = summary.get("inicio")
@@ -217,43 +217,58 @@ def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
     ign_lig = float(stats.get("percentual_ignicao_ligada", 0))
     ign_des = float(stats.get("percentual_ignicao_desligada", 0))
 
-    def _fmt_hm(segundos: float) -> str:
-        h, r = divmod(int(max(segundos, 0)), 3600)
+    def _hm(seg: float) -> str:
+        h, r = divmod(int(max(seg, 0)), 3600)
         return f"{h:02d}:{r // 60:02d}"
 
-    st.markdown(f"### {veiculo}")
-    st.caption(f"Placa: **{placa}**")
-    st.divider()
+    hora_ini = inicio.strftime("%H:%M") if inicio else "—"
+    hora_fim = fim.strftime("%H:%M")    if fim    else "—"
+    dur_par  = f"{dur_med:.0f} min"     if paradas else "—"
 
-    st.metric("📍 Distância", f"{dist_km:.1f} km")
+    st.markdown(
+        f"""
+        <style>
+        .resumo-rota {{font-family: sans-serif; font-size: 12px; color: #444; line-height: 1.8;}}
+        .resumo-rota .titulo {{font-size: 15px; font-weight: 700; color: #111; margin-bottom: 2px;}}
+        .resumo-rota .placa  {{font-size: 11px; color: #888; margin-bottom: 8px;}}
+        .resumo-rota .secao  {{margin: 8px 0 4px; font-size: 10px; font-weight: 600;
+                               text-transform: uppercase; letter-spacing: .5px; color: #aaa;}}
+        .resumo-rota .linha  {{display: flex; justify-content: space-between; padding: 2px 0;
+                               border-bottom: 1px solid #f0f0f0;}}
+        .resumo-rota .label  {{color: #666;}}
+        .resumo-rota .valor  {{font-weight: 600; color: #222;}}
+        .alerta {{color: #e53e3e !important;}}
+        </style>
+        <div class="resumo-rota">
+          <div class="titulo">🚛 {veiculo}</div>
+          <div class="placa">Placa: {placa}</div>
 
-    c1, c2 = st.columns(2)
-    c1.metric("🕐 Início", inicio.strftime("%H:%M") if inicio else "—")
-    c2.metric("🕑 Fim",    fim.strftime("%H:%M")    if fim    else "—")
+          <div class="secao">Rota</div>
+          <div class="linha"><span class="label">Distância</span><span class="valor">{dist_km:.1f} km</span></div>
+          <div class="linha"><span class="label">Início</span><span class="valor">{hora_ini}</span></div>
+          <div class="linha"><span class="label">Fim</span><span class="valor">{hora_fim}</span></div>
 
-    st.divider()
+          <div class="secao">Velocidade</div>
+          <div class="linha"><span class="label">Média</span><span class="valor">{vel_med:.1f} km/h</span></div>
+          <div class="linha"><span class="label">Máxima</span><span class="valor">{vel_max:.1f} km/h</span></div>
+          <div class="linha"><span class="label">Alertas</span>
+            <span class="valor {'alerta' if alertas > 0 else ''}">{alertas}</span></div>
 
-    c3, c4 = st.columns(2)
-    c3.metric("⚡ Vel. média",   f"{vel_med:.1f} km/h")
-    c4.metric("🚀 Vel. máxima",  f"{vel_max:.1f} km/h")
+          <div class="secao">Tempo</div>
+          <div class="linha"><span class="label">Movimento</span><span class="valor">{_hm(t_mov)}</span></div>
+          <div class="linha"><span class="label">Parado</span><span class="valor">{_hm(t_par)}</span></div>
 
-    st.metric("🚨 Alertas velocidade", alertas)
+          <div class="secao">Paradas</div>
+          <div class="linha"><span class="label">Quantidade</span><span class="valor">{paradas}</span></div>
+          <div class="linha"><span class="label">Duração média</span><span class="valor">{dur_par}</span></div>
 
-    st.divider()
-
-    c5, c6 = st.columns(2)
-    c5.metric("▶️ Movimento", _fmt_hm(t_mov))
-    c6.metric("⏸️ Parado",    _fmt_hm(t_par))
-
-    c7, c8 = st.columns(2)
-    c7.metric("🅿️ Paradas",     paradas)
-    c8.metric("⏱️ Média parada", f"{dur_med:.0f} min" if paradas else "—")
-
-    st.divider()
-
-    c9, c10 = st.columns(2)
-    c9.metric("🟢 Ign. ligada",    f"{ign_lig:.1f}%")
-    c10.metric("🔴 Ign. desligada", f"{ign_des:.1f}%")
+          <div class="secao">Ignição</div>
+          <div class="linha"><span class="label">🟢 Ligada</span><span class="valor">{ign_lig:.1f}%</span></div>
+          <div class="linha"><span class="label">🔴 Desligada</span><span class="valor">{ign_des:.1f}%</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 main()
