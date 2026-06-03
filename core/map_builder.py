@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from config import LATITUDE_COLUMN, LONGITUDE_COLUMN, SPEED_BANDS
+from config import IS_STOP_COLUMN, LATITUDE_COLUMN, LONGITUDE_COLUMN, SPEED_BANDS, STOP_ID_COLUMN
 from utils.helpers import ensure_directory
 
 try:
@@ -155,6 +155,11 @@ def build_pydeck_layers(
     if show_stops and not stops_df.empty:
         layers.append(_camada_paradas(stops_df))
 
+    # Paradas com ignição desligada — círculos laranjas por cima das paradas azuis
+    layer_ignicao = _camada_ignicao_desligada(route)
+    if layer_ignicao is not None:
+        layers.append(layer_ignicao)
+
     view_state = pdk.ViewState(
         latitude=float(route[LATITUDE_COLUMN].median()),
         longitude=float(route[LONGITUDE_COLUMN].median()),
@@ -239,6 +244,11 @@ def build_pydeck_layers_multi(
             layer_alertas = _camada_alertas(route, speed_limit, veiculo=str(vehicle))
             if layer_alertas is not None:
                 layers.append(layer_alertas)
+
+        # Paradas com ignição desligada por veículo
+        layer_ignicao = _camada_ignicao_desligada(route)
+        if layer_ignicao is not None:
+            layers.append(layer_ignicao)
 
     # Paradas de todos os veículos do dia
     if show_stops and not stops_df.empty:
@@ -378,6 +388,57 @@ def _camada_alertas(
         pickable=True,
         stroked=True,
         filled=True,
+    )
+
+
+def _camada_ignicao_desligada(route: pd.DataFrame) -> Any | None:
+    """ScatterplotLayer laranja para paradas onde a ignição estava desligada.
+
+    Usa o DataFrame enriquecido pelo classify_stops (que contém as colunas
+    IS_STOP_COLUMN e STOP_ID_COLUMN). Cada parada com ignição off é
+    representada por um círculo laranja no ponto mediano da sequência.
+
+    Retorna None quando o DataFrame não vem de classify_stops ou
+    não há paradas com ignição desligada.
+    """
+    # Só funciona com o DataFrame enriquecido (tem as colunas de parada)
+    if IS_STOP_COLUMN not in route.columns or STOP_ID_COLUMN not in route.columns:
+        return None
+
+    ignicao_off = route["Ignição"].astype(str).str.strip().str.casefold() == "desligada"
+    parada_off = route.loc[route[IS_STOP_COLUMN] & ignicao_off]
+
+    if parada_off.empty:
+        return None
+
+    # Um ponto representativo por parada (mediana de lat/lon)
+    grouped = (
+        parada_off.groupby(STOP_ID_COLUMN, observed=True)
+        .agg(
+            lon=(LONGITUDE_COLUMN, "median"),
+            lat=(LATITUDE_COLUMN, "median"),
+            n_registros=(LATITUDE_COLUMN, "count"),
+        )
+        .reset_index()
+    )
+    # Raio proporcional à quantidade de registros (proxy da duração)
+    grouped["radius"] = grouped["n_registros"].apply(
+        lambda n: max(55.0, min(320.0, 55.0 + float(n) * 2.0))
+    )
+    grouped["label"] = "Ignição desligada (" + grouped["n_registros"].astype(str) + " pts)"
+
+    return pdk.Layer(
+        "ScatterplotLayer",
+        data=grouped,
+        get_position=["lon", "lat"],
+        get_radius="radius",
+        get_fill_color=[237, 137, 54, 190],   # laranja semitransparente
+        get_line_color=[200, 90, 20],
+        line_width_min_pixels=1,
+        pickable=True,
+        stroked=True,
+        filled=True,
+        auto_highlight=True,
     )
 
 
