@@ -107,9 +107,9 @@ def main() -> None:
 
         col1, col2 = st.columns(2)
         with col1:
-            st.plotly_chart(grafico_km_por_veiculo(resumo), width="stretch")
+            st.plotly_chart(grafico_km_por_veiculo(resumo), use_container_width=True)
         with col2:
-            st.plotly_chart(grafico_evolucao_diaria(resumo), width="stretch")
+            st.plotly_chart(grafico_evolucao_diaria(resumo), use_container_width=True)
 
         # Adiciona colunas de ignição ao resumo SQL (não calculadas via SQL)
         # para compatibilidade com grafico_ignicao()
@@ -120,16 +120,16 @@ def main() -> None:
 
         col3, col4 = st.columns(2)
         with col3:
-            st.plotly_chart(grafico_ranking_alertas(resumo), width="stretch")
+            st.plotly_chart(grafico_ranking_alertas(resumo), use_container_width=True)
         with col4:
-            st.plotly_chart(grafico_ignicao(resumo), width="stretch")
+            st.plotly_chart(grafico_ignicao(resumo), use_container_width=True)
 
         # Heatmap precisa dos dados brutos (timestamps por linha)
         with st.spinner("Carregando heatmap..."):
             filtrado = consultar_dados(
                 data_inicio, data_fim, veiculos_param, orgs_param
             )
-        st.plotly_chart(heatmap_atividade(filtrado), width="stretch")
+        st.plotly_chart(heatmap_atividade(filtrado), use_container_width=True)
     except Exception as exc:
         st.error(f"Não foi possível renderizar o dashboard: {exc}")
 
@@ -152,4 +152,5 @@ main()
 # - KPIs calculados direto do resumo SQL sem recarregar 800k linhas.
 # - heatmap_atividade ainda usa consultar_dados() pois precisa de timestamps por linha.
 # - _kpis_do_resumo mantido no import mas KPIs agora derivados do resumo SQL.
+
 

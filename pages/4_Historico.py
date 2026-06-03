@@ -115,8 +115,7 @@ def main() -> None:
         label_a = f"{inicio_a:%d/%m/%Y} a {fim_a:%d/%m/%Y}"
         label_b = f"{inicio_b:%d/%m/%Y} a {fim_b:%d/%m/%Y}"
         st.plotly_chart(
-            grafico_comparativo(resumo_a, resumo_b, label_a, label_b),
-            width="stretch",
+            grafico_comparativo(resumo_a, resumo_b, label_a, label_b), use_container_width=True,
         )
     except Exception as exc:
         st.error(f"Não foi possível renderizar o histórico: {exc}")
@@ -138,4 +137,5 @@ def _delta(valor_a: float, valor_b: float) -> str:
 
 
 main()
+
 

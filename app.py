@@ -50,8 +50,7 @@ def main() -> None:
                     "Registros": item["total_registros"],
                 }
                 for item in arquivos
-            ],
-            width="stretch",
+            ], use_container_width=True,
             hide_index=True,
         )
     except Exception as exc:
@@ -81,4 +80,5 @@ def _renderizar_acessos() -> None:
 
 if __name__ == "__main__":
     main()
+
 

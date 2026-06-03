@@ -215,3 +215,4 @@ main()
 #   selecionado, sem carregar o dataset completo.
 # - _MAP_STYLE importado de map_builder para consistência com o CLI.
 
+
