@@ -144,6 +144,9 @@ def build_pydeck_layers(
             )
         )
 
+    # Pontos invisíveis e pickables para exibir velocidade ao passar o mouse
+    layers.append(_camada_pontos_velocidade(route))
+
     # Marcadores de início e fim
     if not route.empty:
         layers.append(_camada_marcadores(route, prefix=veiculo_label))
@@ -245,6 +248,9 @@ def build_pydeck_layers_multi(
                     auto_highlight=True,
                 )
             )
+
+        # Pontos invisíveis e pickables para exibir velocidade ao passar o mouse
+        layers.append(_camada_pontos_velocidade(route))
 
         # Marcadores de início e fim do veículo
         if not route.empty:
@@ -471,6 +477,34 @@ def _camada_ignicao_desligada(
         stroked=True,
         filled=True,
         auto_highlight=True,
+    )
+
+
+def _camada_pontos_velocidade(route: pd.DataFrame) -> Any:
+    """ScatterplotLayer invisível e pickable sobre cada ponto da rota.
+
+    Raio de 25 m por ponto — transparente visualmente mas detectável
+    pelo hover do PyDeck. O tooltip exibe a velocidade exata naquele
+    ponto GPS ao passar o mouse sobre a linha de deslocamento.
+    """
+    data = pd.DataFrame({
+        "lon": route[LONGITUDE_COLUMN].astype(float).values,
+        "lat": route[LATITUDE_COLUMN].astype(float).values,
+        "label": (
+            "🚗 " + route["Velocidade"].astype(float).round(1).astype(str) + " km/h"
+        ).values,
+        "Velocidade": "",  # campo vazio — velocidade já está no label
+    })
+    return pdk.Layer(
+        "ScatterplotLayer",
+        data=data,
+        get_position=["lon", "lat"],
+        get_radius=25,
+        get_fill_color=[0, 0, 0, 0],   # completamente transparente
+        pickable=True,
+        stroked=False,
+        filled=True,
+        auto_highlight=False,
     )
 
 
