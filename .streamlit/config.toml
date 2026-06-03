@@ -1,0 +1,10 @@
+[server]
+# Tamanho máximo de upload em MB (padrão Streamlit é 200 MB)
+maxUploadSize = 200
+
+[theme]
+base = "light"
+
+[client]
+# Ocultar detalhes técnicos de erro para usuários finais
+showErrorDetails = false
