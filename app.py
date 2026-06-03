@@ -1,4 +1,4 @@
-"""Home do Portal Logístico em Streamlit."""
+﻿"""Home do Portal Logístico em Streamlit."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def main() -> None:
                 }
                 for item in arquivos
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
     except Exception as exc:
@@ -81,3 +81,4 @@ def _renderizar_acessos() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,4 +1,4 @@
-"""Upload e gerenciamento de CSVs.
+﻿"""Upload e gerenciamento de CSVs.
 
 No modo Google Drive: os arquivos são enviados para a pasta do Drive
 configurada em st.secrets e o DuckDB é semeado imediatamente.
@@ -55,7 +55,7 @@ def main() -> None:
         if arquivos:
             st.dataframe(
                 _formatar_arquivos(arquivos),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
             _renderizar_remocoes(arquivos)
@@ -97,7 +97,7 @@ def _processar_upload(uploaded_file: object) -> None:
             f"{invalid_coordinates} coordenadas e {invalid_dates} datas "
             "inválidas descartadas."
         )
-        st.dataframe(cleaned.head(5), use_container_width=True)
+        st.dataframe(cleaned.head(5), width="stretch")
     except Exception as exc:
         st.error(f"❌ {nome}: não foi possível validar o CSV. {exc}")
 
@@ -225,3 +225,4 @@ main()
 #   limpar_banco(); modo local → unlink() original.
 # - Banner informativo quando Drive está ativo.
 # - _formatar_arquivos(): trata data_upload NaT (vindo do Drive) sem erro.
+

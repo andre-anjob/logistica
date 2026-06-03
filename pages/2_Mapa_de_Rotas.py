@@ -1,4 +1,4 @@
-"""Mapa interativo de rotas — renderizado com PyDeck (WebGL)."""
+﻿"""Mapa interativo de rotas — renderizado com PyDeck (WebGL)."""
 
 from __future__ import annotations
 
@@ -155,7 +155,7 @@ def _renderizar_rota(
 
     col_map, col_report = st.columns([3, 1])
     with col_map:
-        st.pydeck_chart(deck, use_container_width=True, height=550)
+        st.pydeck_chart(deck, width="stretch", height=550)
     with col_report:
         st.text(build_text_report(summary, stats, "renderizado no portal"))
 
@@ -190,7 +190,7 @@ def _renderizar_todas_rotas(
 
     col_map, col_report = st.columns([3, 1])
     with col_map:
-        st.pydeck_chart(deck, use_container_width=True, height=550)
+        st.pydeck_chart(deck, width="stretch", height=550)
     with col_report:
         st.subheader("Resumo do dia")
         st.metric("Veículos no mapa", len(routes))
@@ -214,3 +214,4 @@ main()
 # - Dados carregados via consultar_dados(selected_day, selected_day): apenas o dia
 #   selecionado, sem carregar o dataset completo.
 # - _MAP_STYLE importado de map_builder para consistência com o CLI.
+

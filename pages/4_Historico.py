@@ -1,4 +1,4 @@
-"""Comparativo histórico entre períodos."""
+﻿"""Comparativo histórico entre períodos."""
 
 from __future__ import annotations
 
@@ -116,7 +116,7 @@ def main() -> None:
         label_b = f"{inicio_b:%d/%m/%Y} a {fim_b:%d/%m/%Y}"
         st.plotly_chart(
             grafico_comparativo(resumo_a, resumo_b, label_a, label_b),
-            use_container_width=True,
+            width="stretch",
         )
     except Exception as exc:
         st.error(f"Não foi possível renderizar o histórico: {exc}")
@@ -138,3 +138,4 @@ def _delta(valor_a: float, valor_b: float) -> str:
 
 
 main()
+

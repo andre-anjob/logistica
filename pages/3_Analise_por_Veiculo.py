@@ -1,4 +1,4 @@
-"""Análise individual por veículo."""
+﻿"""Análise individual por veículo."""
 
 from __future__ import annotations
 
@@ -77,7 +77,7 @@ def main() -> None:
         resumo = calcular_resumo_diario(filtrado, float(limite))
 
         renderizar_kpis(kpis)
-        st.plotly_chart(grafico_evolucao_diaria(resumo), use_container_width=True)
+        st.plotly_chart(grafico_evolucao_diaria(resumo), width="stretch")
 
         col1, col2 = st.columns(2)
         with col1:
@@ -88,7 +88,7 @@ def main() -> None:
                 markers=True,
                 title="Velocidade máxima por dia",
             )
-            st.plotly_chart(fig_vel, use_container_width=True)
+            st.plotly_chart(fig_vel, width="stretch")
         with col2:
             fig_paradas = px.bar(
                 resumo,
@@ -96,10 +96,10 @@ def main() -> None:
                 y="quantidade_paradas",
                 title="Quantidade de paradas por dia",
             )
-            st.plotly_chart(fig_paradas, use_container_width=True)
+            st.plotly_chart(fig_paradas, width="stretch")
 
         tabela = _formatar_tabela(resumo)
-        st.dataframe(tabela, use_container_width=True, hide_index=True)
+        st.dataframe(tabela, width="stretch", hide_index=True)
         st.download_button(
             "Baixar tabela em Excel",
             data=_gerar_excel(tabela),
@@ -145,3 +145,4 @@ def _normalizar_periodo(periodo: object, default_start: object, max_date: object
 
 
 main()
+
