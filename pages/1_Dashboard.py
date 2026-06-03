@@ -111,17 +111,24 @@ def main() -> None:
         with col2:
             st.plotly_chart(grafico_evolucao_diaria(resumo), use_container_width=True)
 
+        # Adiciona colunas de ignição ao resumo SQL (não calculadas via SQL)
+        # para compatibilidade com grafico_ignicao()
+        if "horas_ignicao_ligada" not in resumo.columns:
+            resumo["horas_ignicao_ligada"] = 0.0
+        if "horas_ignicao_desligada" not in resumo.columns:
+            resumo["horas_ignicao_desligada"] = 0.0
+
         col3, col4 = st.columns(2)
         with col3:
             st.plotly_chart(grafico_ranking_alertas(resumo), use_container_width=True)
         with col4:
-            # heatmap precisa dos dados brutos (horas e dias da semana)
-            with st.spinner("Carregando heatmap..."):
-                filtrado = consultar_dados(
-                    data_inicio, data_fim, veiculos_param, orgs_param
-                )
             st.plotly_chart(grafico_ignicao(resumo), use_container_width=True)
 
+        # Heatmap precisa dos dados brutos (timestamps por linha)
+        with st.spinner("Carregando heatmap..."):
+            filtrado = consultar_dados(
+                data_inicio, data_fim, veiculos_param, orgs_param
+            )
         st.plotly_chart(heatmap_atividade(filtrado), use_container_width=True)
     except Exception as exc:
         st.error(f"Não foi possível renderizar o dashboard: {exc}")
