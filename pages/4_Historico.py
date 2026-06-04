@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import streamlit as st
+from utils.styles import aplicar_estilos
 
 from components.charts import grafico_comparativo
 from components.kpi_cards import renderizar_kpis
@@ -22,6 +23,7 @@ from core.database import (
 def main() -> None:
     """Renderiza o comparativo de períodos."""
     st.set_page_config(layout="wide", page_title="Histórico", page_icon="📈")
+    aplicar_estilos()
     st.title("Histórico Comparativo")
 
     inicializar_banco()
@@ -137,5 +139,6 @@ def _delta(valor_a: float, valor_b: float) -> str:
 
 
 main()
+
 
 

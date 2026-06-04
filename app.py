@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from utils.styles import aplicar_estilos
 
 from core.cache_manager import (
     carregar_dados_consolidados,
@@ -14,6 +15,7 @@ from core.cache_manager import (
 def main() -> None:
     """Renderiza a página inicial do portal."""
     st.set_page_config(layout="wide", page_title="Portal Logístico", page_icon="🚛")
+    aplicar_estilos()
     st.title("Portal Logístico — Rastreamento de Frota")
 
     _renderizar_acessos()
@@ -80,5 +82,6 @@ def _renderizar_acessos() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 

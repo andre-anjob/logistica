@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import streamlit as st
+from utils.styles import aplicar_estilos
 
 from components.charts import (
     grafico_evolucao_diaria,
@@ -29,6 +30,7 @@ from core.database import (
 def main() -> None:
     """Renderiza o dashboard geral."""
     st.set_page_config(layout="wide", page_title="Dashboard Geral", page_icon="🚛")
+    aplicar_estilos()
     st.title("Dashboard Geral da Frota")
 
     inicializar_banco()
@@ -152,5 +154,6 @@ main()
 # - KPIs calculados direto do resumo SQL sem recarregar 800k linhas.
 # - heatmap_atividade ainda usa consultar_dados() pois precisa de timestamps por linha.
 # - _kpis_do_resumo mantido no import mas KPIs agora derivados do resumo SQL.
+
 
 

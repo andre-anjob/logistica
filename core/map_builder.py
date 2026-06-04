@@ -36,7 +36,7 @@ PALETA_VEICULOS: list[list[int]] = [
 ]
 
 # Mapa de estilo sem necessidade de token Mapbox
-_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+_MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 
 
 # ---------------------------------------------------------------------------

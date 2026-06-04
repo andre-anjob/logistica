@@ -8,6 +8,7 @@ from io import BytesIO
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from utils.styles import aplicar_estilos
 
 from components.charts import grafico_evolucao_diaria
 from components.kpi_cards import renderizar_kpis
@@ -25,6 +26,7 @@ from core.database import (
 def main() -> None:
     """Renderiza análise individual de um veículo."""
     st.set_page_config(layout="wide", page_title="Análise por Veículo", page_icon="🚗")
+    aplicar_estilos()
     st.title("Análise por Veículo")
 
     inicializar_banco()
@@ -145,5 +147,6 @@ def _normalizar_periodo(periodo: object, default_start: object, max_date: object
 
 
 main()
+
 
 

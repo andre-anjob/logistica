@@ -7,6 +7,7 @@ from datetime import date, timedelta
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
+from utils.styles import aplicar_estilos
 
 from config import LATITUDE_COLUMN, LONGITUDE_COLUMN, ROUTE_DATE_COLUMN
 from core.cache_manager import dados_disponiveis
@@ -39,6 +40,7 @@ _TOOLTIP = {
 def main() -> None:
     """Renderiza a página de mapas."""
     st.set_page_config(layout="wide", page_title="Mapa de Rotas", page_icon="🗺️")
+    aplicar_estilos()
     st.title("Mapa de Rotas")
 
     inicializar_banco()
@@ -325,5 +327,6 @@ main()
 # - Dados carregados via consultar_dados(selected_day, selected_day): apenas o dia
 #   selecionado, sem carregar o dataset completo.
 # - _MAP_STYLE importado de map_builder para consistência com o CLI.
+
 
 

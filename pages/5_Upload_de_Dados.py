@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from utils.styles import aplicar_estilos
 
 from core.cache_manager import (
     UPLOADS_DIR,
@@ -28,6 +29,7 @@ from utils.helpers import sanitize_filename
 def main() -> None:
     """Renderiza upload e gerenciamento de dados."""
     st.set_page_config(layout="wide", page_title="Upload de Dados", page_icon="📤")
+    aplicar_estilos()
     st.title("Upload de Dados")
 
     if _drive_ativo():
@@ -224,5 +226,6 @@ main()
 #   limpar_banco(); modo local → unlink() original.
 # - Banner informativo quando Drive está ativo.
 # - _formatar_arquivos(): trata data_upload NaT (vindo do Drive) sem erro.
+
 
 
