@@ -437,32 +437,33 @@ def _camada_ignicao_desligada(
     if parada_off.empty:
         return None
 
-    # Um ponto representativo por parada (mediana de lat/lon + duração real)
-    def _duracao_min(x: pd.Series) -> float:
-        delta = x.max() - x.min()
-        return round(delta.total_seconds() / 60, 1)
-
     grouped = (
         parada_off.groupby(STOP_ID_COLUMN, observed=True)
         .agg(
             lon=(LONGITUDE_COLUMN, "median"),
             lat=(LATITUDE_COLUMN, "median"),
-            duracao_min=("Data da Coordenada", _duracao_min),
+            inicio=("Data da Coordenada", "min"),
+            fim=("Data da Coordenada", "max"),
         )
         .reset_index()
     )
-    # Aplica filtro de duração mínima
+    grouped["duracao_min"] = (
+        (grouped["fim"] - grouped["inicio"]).dt.total_seconds() / 60
+    ).round(1)
+
     if min_minutos > 0:
         grouped = grouped.loc[grouped["duracao_min"] >= min_minutos]
 
     if grouped.empty:
         return None
 
-    grouped["radius"] = 60  # raio fixo em metros
+    grouped["radius"] = 60
     grouped["label"] = (
-        "🔴 Ignição desligada — " + grouped["duracao_min"].astype(str) + " min"
+        "🔴 Ign. desligada"
+        + "<br>" + grouped["inicio"].dt.strftime("%H:%M")
+        + " → " + grouped["fim"].dt.strftime("%H:%M")
+        + " (" + grouped["duracao_min"].astype(str) + " min)"
     )
-    # Campo vazio para evitar que o tooltip global mostre {Velocidade} literal
     grouped["Velocidade"] = ""
 
     return pdk.Layer(
@@ -530,19 +531,19 @@ def _camada_ignicao_ligada(
     if parada_on.empty:
         return None
 
-    def _duracao_min(x: pd.Series) -> float:
-        delta = x.max() - x.min()
-        return round(delta.total_seconds() / 60, 1)
-
     grouped = (
         parada_on.groupby(STOP_ID_COLUMN, observed=True)
         .agg(
             lon=(LONGITUDE_COLUMN, "median"),
             lat=(LATITUDE_COLUMN, "median"),
-            duracao_min=("Data da Coordenada", _duracao_min),
+            inicio=("Data da Coordenada", "min"),
+            fim=("Data da Coordenada", "max"),
         )
         .reset_index()
     )
+    grouped["duracao_min"] = (
+        (grouped["fim"] - grouped["inicio"]).dt.total_seconds() / 60
+    ).round(1)
 
     if min_minutos > 0:
         grouped = grouped.loc[grouped["duracao_min"] >= min_minutos]
@@ -550,9 +551,12 @@ def _camada_ignicao_ligada(
     if grouped.empty:
         return None
 
-    grouped["radius"] = 60  # raio fixo em metros
+    grouped["radius"] = 60
     grouped["label"] = (
-        "🟡 Ignição ligada parada — " + grouped["duracao_min"].astype(str) + " min"
+        "🟡 Ign. ligada parada"
+        + "<br>" + grouped["inicio"].dt.strftime("%H:%M")
+        + " → " + grouped["fim"].dt.strftime("%H:%M")
+        + " (" + grouped["duracao_min"].astype(str) + " min)"
     )
     grouped["Velocidade"] = ""
 
@@ -572,13 +576,21 @@ def _camada_ignicao_ligada(
 
 
 def _camada_paradas(stops_df: pd.DataFrame) -> Any:
-    """Cria ScatterplotLayer azul com círculos proporcionais à duração da parada."""
+    """Cria ScatterplotLayer azul com círculo por parada detectada."""
+    dur = stops_df["duracao_minutos"].astype(float).round(1)
+    ini = pd.to_datetime(stops_df["inicio"]).dt.strftime("%H:%M")
+    fim = pd.to_datetime(stops_df["fim"]).dt.strftime("%H:%M")
+
     data = pd.DataFrame({
         "lon": stops_df[LONGITUDE_COLUMN].astype(float).values,
         "lat": stops_df[LATITUDE_COLUMN].astype(float).values,
-        "duracao_minutos": stops_df["duracao_minutos"].astype(float).values,
-        "radius": 60,  # raio fixo em metros
-        "label": ("Parada: " + stops_df["duracao_minutos"].astype(float).round(1).astype(str) + " min").values,
+        "radius": 60,
+        "label": (
+            "🔵 Parada"
+            + "<br>" + ini + " → " + fim
+            + " (" + dur.astype(str) + " min)"
+        ).values,
+        "Velocidade": "",
     })
 
     return pdk.Layer(
