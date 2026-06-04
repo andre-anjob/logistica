@@ -22,13 +22,16 @@ from core.routes import analyze_route, filter_stops_for_route, iter_vehicle_day_
 from core.stats import calculate_route_stats
 
 _TOOLTIP = {
-    "html": "<b>{label}</b>",
+    "html": (
+        "<b style='font-size:13px'>{titulo}</b>"
+        "<div style='font-size:12px;margin-top:3px;opacity:.9'>{detalhe}</div>"
+    ),
     "style": {
-        "backgroundColor": "rgba(0,0,0,0.72)",
+        "backgroundColor": "rgba(0,0,0,0.78)",
         "color": "white",
-        "fontSize": "13px",
-        "padding": "6px 10px",
-        "borderRadius": "4px",
+        "padding": "7px 11px",
+        "borderRadius": "5px",
+        "maxWidth": "220px",
     },
 }
 

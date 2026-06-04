@@ -355,13 +355,15 @@ def _camada_marcadores(route: pd.DataFrame, prefix: str = "") -> Any:
         {
             "lon": float(inicio[LONGITUDE_COLUMN]),
             "lat": float(inicio[LATITUDE_COLUMN]),
-            "label": label_inicio,
+            "titulo": label_inicio,
+            "detalhe": "",
             "color": [39, 174, 96],
         },
         {
             "lon": float(fim[LONGITUDE_COLUMN]),
             "lat": float(fim[LATITUDE_COLUMN]),
-            "label": label_fim,
+            "titulo": label_fim,
+            "detalhe": "",
             "color": [192, 57, 43],
         },
     ]
@@ -390,11 +392,12 @@ def _camada_alertas(
         return None
 
     vel = alertas["Velocidade"].astype(float).round(1)
-    prefixo = f"{veiculo} — " if veiculo else ""
+    prefixo = f"{veiculo}" if veiculo else ""
     data = pd.DataFrame({
         "lon": alertas[LONGITUDE_COLUMN].astype(float).values,
         "lat": alertas[LATITUDE_COLUMN].astype(float).values,
-        "label": (prefixo + "⚠️ " + vel.astype(str) + " km/h").values,
+        "titulo": ("⚠️ " + vel.astype(str) + " km/h").values,
+        "detalhe": prefixo,
     })
 
     return pdk.Layer(
@@ -458,13 +461,12 @@ def _camada_ignicao_desligada(
         return None
 
     grouped["radius"] = 60
-    grouped["label"] = (
-        "🔴 Ign. desligada"
-        + "<br>" + grouped["inicio"].dt.strftime("%H:%M")
+    grouped["titulo"] = "🔴 Ign. desligada"
+    grouped["detalhe"] = (
+        grouped["inicio"].dt.strftime("%H:%M")
         + " → " + grouped["fim"].dt.strftime("%H:%M")
         + " (" + grouped["duracao_min"].astype(str) + " min)"
     )
-    grouped["Velocidade"] = ""
 
     return pdk.Layer(
         "ScatterplotLayer",
@@ -491,10 +493,10 @@ def _camada_pontos_velocidade(route: pd.DataFrame) -> Any:
     data = pd.DataFrame({
         "lon": route[LONGITUDE_COLUMN].astype(float).values,
         "lat": route[LATITUDE_COLUMN].astype(float).values,
-        "label": (
+        "titulo": (
             "🚗 " + route["Velocidade"].astype(float).round(1).astype(str) + " km/h"
         ).values,
-        "Velocidade": "",  # campo vazio — velocidade já está no label
+        "detalhe": "",
     })
     return pdk.Layer(
         "ScatterplotLayer",
@@ -552,13 +554,12 @@ def _camada_ignicao_ligada(
         return None
 
     grouped["radius"] = 60
-    grouped["label"] = (
-        "🟡 Ign. ligada parada"
-        + "<br>" + grouped["inicio"].dt.strftime("%H:%M")
+    grouped["titulo"] = "🟡 Ign. ligada parada"
+    grouped["detalhe"] = (
+        grouped["inicio"].dt.strftime("%H:%M")
         + " → " + grouped["fim"].dt.strftime("%H:%M")
         + " (" + grouped["duracao_min"].astype(str) + " min)"
     )
-    grouped["Velocidade"] = ""
 
     return pdk.Layer(
         "ScatterplotLayer",
@@ -585,12 +586,8 @@ def _camada_paradas(stops_df: pd.DataFrame) -> Any:
         "lon": stops_df[LONGITUDE_COLUMN].astype(float).values,
         "lat": stops_df[LATITUDE_COLUMN].astype(float).values,
         "radius": 60,
-        "label": (
-            "🔵 Parada"
-            + "<br>" + ini + " → " + fim
-            + " (" + dur.astype(str) + " min)"
-        ).values,
-        "Velocidade": "",
+        "titulo": "🔵 Parada",
+        "detalhe": (ini + " → " + fim + " (" + dur.astype(str) + " min)").values,
     })
 
     return pdk.Layer(
