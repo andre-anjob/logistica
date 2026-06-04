@@ -234,6 +234,8 @@ def build_pydeck_layers_multi(
                     ],
                     "veiculo": str(vehicle),
                     "color": cor,
+                    "titulo": str(vehicle),
+                    "detalhe": f"Placa: {plate}",
                 }
             ]
             layers.append(
