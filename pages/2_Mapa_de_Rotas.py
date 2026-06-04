@@ -241,7 +241,12 @@ def _renderizar_todas_rotas(
 
 
 def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
-    """Exibe o resumo da rota em layout compacto e minimalista."""
+    """Exibe o resumo da rota em layout compacto e minimalista.
+
+    Início/Fim e tempo parado são calculados entre o primeiro e último
+    momento em que o veículo estava em movimento, excluindo o tempo
+    na garagem antes de sair e após retornar.
+    """
     veiculo = summary.get("Veículo", "—")
     placa   = summary.get("Placa", "—")
     inicio  = summary.get("inicio")
@@ -262,9 +267,40 @@ def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
         h, r = divmod(int(max(seg, 0)), 3600)
         return f"{h:02d}:{r // 60:02d}"
 
-    hora_ini = inicio.strftime("%H:%M") if inicio else "—"
-    hora_fim = fim.strftime("%H:%M")    if fim    else "—"
-    dur_par  = f"{dur_med:.0f} min"     if paradas else "—"
+    # --- Calcular janela de rota (primeiro → último movimento) ---
+    hora_saida   = inicio.strftime("%H:%M") if inicio else "—"
+    hora_retorno = fim.strftime("%H:%M")    if fim    else "—"
+    t_par_rota   = t_par  # fallback: valor original
+
+    rota_df = summary.get("rota")
+    if rota_df is not None and len(rota_df) > 1:
+        vel_s = rota_df["Velocidade"].astype(float)
+        em_mov = rota_df.loc[vel_s > 0, "Data da Coordenada"]
+        if len(em_mov) >= 2:
+            primeiro_mov = em_mov.min()
+            ultimo_mov   = em_mov.max()
+            hora_saida   = primeiro_mov.strftime("%H:%M")
+            hora_retorno = ultimo_mov.strftime("%H:%M")
+
+            # Pontos entre primeiro e último movimento
+            janela = rota_df[
+                (rota_df["Data da Coordenada"] >= primeiro_mov)
+                & (rota_df["Data da Coordenada"] <= ultimo_mov)
+            ].copy()
+
+            deltas = (
+                janela["Data da Coordenada"]
+                .diff()
+                .dt.total_seconds()
+                .clip(lower=0)
+                .fillna(0)
+            )
+            vel_janela = janela["Velocidade"].astype(float)
+            t_em_rota   = (ultimo_mov - primeiro_mov).total_seconds()
+            t_mov_rota  = float(deltas[vel_janela > 0].sum())
+            t_par_rota  = max(t_em_rota - t_mov_rota, 0)
+
+    dur_par = f"{dur_med:.0f} min" if paradas else "—"
 
     st.markdown(
         f"""
@@ -286,8 +322,8 @@ def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
 
           <div class="secao">Rota</div>
           <div class="linha"><span class="label">Distância</span><span class="valor">{dist_km:.1f} km</span></div>
-          <div class="linha"><span class="label">Início</span><span class="valor">{hora_ini}</span></div>
-          <div class="linha"><span class="label">Fim</span><span class="valor">{hora_fim}</span></div>
+          <div class="linha"><span class="label">Saída</span><span class="valor">{hora_saida}</span></div>
+          <div class="linha"><span class="label">Retorno</span><span class="valor">{hora_retorno}</span></div>
 
           <div class="secao">Velocidade</div>
           <div class="linha"><span class="label">Média</span><span class="valor">{vel_med:.1f} km/h</span></div>
@@ -295,9 +331,9 @@ def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
           <div class="linha"><span class="label">Alertas</span>
             <span class="valor {'alerta' if alertas > 0 else ''}">{alertas}</span></div>
 
-          <div class="secao">Tempo</div>
+          <div class="secao">Tempo em rota</div>
           <div class="linha"><span class="label">Movimento</span><span class="valor">{_hm(t_mov)}</span></div>
-          <div class="linha"><span class="label">Parado</span><span class="valor">{_hm(t_par)}</span></div>
+          <div class="linha"><span class="label">Parado em rota</span><span class="valor">{_hm(t_par_rota)}</span></div>
 
           <div class="secao">Paradas</div>
           <div class="linha"><span class="label">Quantidade</span><span class="valor">{paradas}</span></div>
