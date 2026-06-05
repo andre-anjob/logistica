@@ -1,4 +1,4 @@
-﻿"""Home do Portal Logístico em Streamlit."""
+"""Home do Portal Logístico — dark theme."""
 
 from __future__ import annotations
 
@@ -16,11 +16,45 @@ def main() -> None:
     """Renderiza a página inicial do portal."""
     st.set_page_config(layout="wide", page_title="Portal Logístico", page_icon="🚛")
     aplicar_estilos()
-    st.title("Portal Logístico — Rastreamento de Frota")
 
-    _renderizar_acessos()
+    # ── Header ────────────────────────────────────────────────────
+    st.markdown("""
+    <div class="dash-header">
+        <div class="dash-header-left">
+            <div class="eyebrow">▸ Anjob Assessoria · Rastreamento de Frota</div>
+            <h1>Portal <span>Logístico</span></h1>
+        </div>
+        <div class="dash-header-right">
+            <div class="status-pill">● SISTEMA ATIVO</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Acesso rápido ─────────────────────────────────────────────
+    st.markdown("<div class='section-label'>Acesso rápido</div>", unsafe_allow_html=True)
+
+    cards = [
+        ("🚛 Dashboard Geral", "pages/1_Dashboard.py", "KPIs, gráficos e atividade da frota.", "green"),
+        ("🗺 Mapa de Rotas", "pages/2_Mapa_de_Rotas.py", "Rotas por veículo e dia no mapa.", "blue"),
+        ("🚗 Análise por Veículo", "pages/3_Analise_por_Veiculo.py", "Detalhamento individual por período.", "accent-green"),
+        ("📈 Histórico", "pages/4_Historico.py", "Comparação entre períodos.", "blue"),
+        ("⬆ Upload de Dados", "pages/5_Upload_de_Dados.py", "Enviar e gerenciar CSVs.", "orange"),
+    ]
+
+    cols = st.columns(len(cards))
+    for col, (title, target, caption, _accent) in zip(cols, cards):
+        with col:
+            st.markdown(f"""
+            <div class="kpi-card accent-{_accent.replace('accent-', '')}" style="cursor:pointer;padding:16px 18px">
+                <div class="kpi-label" style="margin-bottom:6px">{caption}</div>
+                <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#e8eaf0">{title}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.page_link(target, label="Acessar →")
+
     st.divider()
 
+    # ── Status dos dados ──────────────────────────────────────────
     try:
         arquivos = listar_arquivos_carregados()
         if not dados_disponiveis():
@@ -29,6 +63,8 @@ def main() -> None:
             return
 
         df = carregar_dados_consolidados()
+
+        # Métricas de status
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Arquivos CSV", len([a for a in arquivos if a["valido"]]))
@@ -40,7 +76,7 @@ def main() -> None:
             periodo = f"{df['data_rota'].min():%d/%m/%Y} → {df['data_rota'].max():%d/%m/%Y}"
             st.metric("Período disponível", periodo)
 
-        st.subheader("Status dos dados")
+        st.markdown("<div class='section-label'>Status dos arquivos carregados</div>", unsafe_allow_html=True)
         st.dataframe(
             [
                 {
@@ -52,36 +88,12 @@ def main() -> None:
                     "Registros": item["total_registros"],
                 }
                 for item in arquivos
-            ], use_container_width=True,
+            ],
+            use_container_width=True,
             hide_index=True,
         )
     except Exception as exc:
         st.error(f"Não foi possível carregar o status do portal: {exc}")
 
 
-def _renderizar_acessos() -> None:
-    st.subheader("Acesso rápido")
-    cards = [
-        ("Dashboard Geral", "pages/1_Dashboard.py", "KPIs, gráficos e atividade da frota."),
-        ("Mapa de Rotas", "pages/2_Mapa_de_Rotas.py", "Rotas por veículo e dia no mapa."),
-        (
-            "Análise por Veículo",
-            "pages/3_Analise_por_Veiculo.py",
-            "Detalhamento individual por período.",
-        ),
-        ("Histórico", "pages/4_Historico.py", "Comparação entre períodos."),
-        ("Upload de Dados", "pages/5_Upload_de_Dados.py", "Enviar e gerenciar CSVs."),
-    ]
-
-    columns = st.columns(len(cards))
-    for column, (title, target, caption) in zip(columns, cards):
-        with column:
-            st.page_link(target, label=title)
-            st.caption(caption)
-
-
-if __name__ == "__main__":
-    main()
-
-
-
+main()

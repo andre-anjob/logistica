@@ -1,4 +1,4 @@
-﻿"""Dashboard geral da frota."""
+"""Dashboard geral da frota — dark theme."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ from components.charts import (
     heatmap_atividade,
 )
 from components.kpi_cards import renderizar_kpis
-from core.analytics import _kpis_do_resumo
 from core.cache_manager import dados_disponiveis
 from core.database import (
     consultar_dados,
@@ -31,7 +30,6 @@ def main() -> None:
     """Renderiza o dashboard geral."""
     st.set_page_config(layout="wide", page_title="Dashboard Geral", page_icon="🚛")
     aplicar_estilos()
-    st.title("Dashboard Geral da Frota")
 
     inicializar_banco()
     if not dados_disponiveis():
@@ -75,15 +73,28 @@ def main() -> None:
         )
         limite = st.sidebar.slider(
             "Limite de velocidade (km/h)",
-            min_value=40,
-            max_value=140,
-            value=80,
-            step=5,
+            min_value=40, max_value=140, value=80, step=5,
             key="dashboard_limite_velocidade",
         )
 
         veiculos_param = veiculos_sel or None
         orgs_param = orgs_sel or None
+
+        # ── Header ────────────────────────────────────────────────
+        date_label = f"{data_inicio:%d/%m/%Y} → {data_fim:%d/%m/%Y}"
+        st.markdown(f"""
+        <div class="dash-header">
+            <div class="dash-header-left">
+                <div class="eyebrow">▸ Portal Logístico · Monitoramento de Frota</div>
+                <h1>Dashboard <span>Geral</span></h1>
+            </div>
+            <div class="dash-header-right">
+                <div class="status-pill">● AO VIVO</div><br>
+                {date_label}<br>
+                Org: {", ".join(orgs_sel) if orgs_sel else "Todas"}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         with st.spinner("Consultando dados..."):
             resumo = consultar_resumo_diario_sql(
@@ -94,66 +105,54 @@ def main() -> None:
             st.warning("Nenhum dado encontrado para os filtros selecionados.")
             st.stop()
 
-        # KPIs calculados sobre o resumo SQL (sem recarregar linhas brutas)
         kpis = {
             "total_km": float(resumo["km_total"].sum()),
             "velocidade_media": float(resumo["velocidade_media"].mean()),
             "total_alertas": int(resumo["alertas_velocidade"].sum()),
             "veiculos_ativos": int(resumo["Veículo"].nunique()),
-            "total_paradas": 0,  # paradas não disponíveis no resumo SQL
+            "total_paradas": 0,
             "horas_ignicao_ligada": 0.0,
             "horas_ignicao_desligada": 0.0,
         }
 
+        # ── KPI cards ─────────────────────────────────────────────
         renderizar_kpis(kpis)
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
+        # ── Linha 1: km + evolução diária ─────────────────────────
         col1, col2 = st.columns(2)
         with col1:
             st.plotly_chart(grafico_km_por_veiculo(resumo), use_container_width=True)
         with col2:
             st.plotly_chart(grafico_evolucao_diaria(resumo), use_container_width=True)
 
-        # Adiciona colunas de ignição ao resumo SQL (não calculadas via SQL)
-        # para compatibilidade com grafico_ignicao()
+        # Adiciona colunas de ignição para compatibilidade com grafico_ignicao()
         if "horas_ignicao_ligada" not in resumo.columns:
             resumo["horas_ignicao_ligada"] = 0.0
         if "horas_ignicao_desligada" not in resumo.columns:
             resumo["horas_ignicao_desligada"] = 0.0
 
+        # ── Linha 2: alertas + ignição ────────────────────────────
         col3, col4 = st.columns(2)
         with col3:
             st.plotly_chart(grafico_ranking_alertas(resumo), use_container_width=True)
         with col4:
             st.plotly_chart(grafico_ignicao(resumo), use_container_width=True)
 
-        # Heatmap precisa dos dados brutos (timestamps por linha)
+        # ── Heatmap ───────────────────────────────────────────────
+        st.markdown("<div class='section-label'>Atividade por hora e dia</div>", unsafe_allow_html=True)
         with st.spinner("Carregando heatmap..."):
-            filtrado = consultar_dados(
-                data_inicio, data_fim, veiculos_param, orgs_param
-            )
+            filtrado = consultar_dados(data_inicio, data_fim, veiculos_param, orgs_param)
         st.plotly_chart(heatmap_atividade(filtrado), use_container_width=True)
+
     except Exception as exc:
         st.error(f"Não foi possível renderizar o dashboard: {exc}")
 
 
 def _normalizar_periodo(periodo: object, default_start: object, max_date: object) -> tuple:
-    if isinstance(periodo, tuple) and len(periodo) == 2:
-        return periodo[0], periodo[1]
-    if isinstance(periodo, list) and len(periodo) == 2:
+    if isinstance(periodo, (tuple, list)) and len(periodo) == 2:
         return periodo[0], periodo[1]
     return default_start, max_date
 
 
 main()
-
-# ALTERAÇÕES:
-# - carregar_dados_consolidados() + aplicar_filtros() removidos: widgets da sidebar
-#   agora usam listas vindas de consultar_veiculos() / consultar_organizacoes().
-# - calcular_resumo_diario() (Python) substituído por consultar_resumo_diario_sql()
-#   (haversine no DuckDB via LAG/WINDOW).
-# - KPIs calculados direto do resumo SQL sem recarregar 800k linhas.
-# - heatmap_atividade ainda usa consultar_dados() pois precisa de timestamps por linha.
-# - _kpis_do_resumo mantido no import mas KPIs agora derivados do resumo SQL.
-
-
-

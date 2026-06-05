@@ -1,4 +1,4 @@
-﻿"""Comparativo histórico entre períodos."""
+"""Comparativo histórico entre períodos — dark theme."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import streamlit as st
 from utils.styles import aplicar_estilos
 
 from components.charts import grafico_comparativo
-from components.kpi_cards import renderizar_kpis
+from components.kpi_cards import kpi_card_html
 from config import ROUTE_DATE_COLUMN
 from core.analytics import calcular_kpis_frota, calcular_resumo_diario
 from core.cache_manager import dados_disponiveis
@@ -24,7 +24,6 @@ def main() -> None:
     """Renderiza o comparativo de períodos."""
     st.set_page_config(layout="wide", page_title="Histórico", page_icon="📈")
     aplicar_estilos()
-    st.title("Histórico Comparativo")
 
     inicializar_banco()
     if not dados_disponiveis():
@@ -47,23 +46,15 @@ def main() -> None:
         with col_a:
             periodo_a = st.date_input(
                 "Período A",
-                value=st.session_state.get(
-                    "historico_periodo_a",
-                    (default_a_start, default_a_end),
-                ),
-                min_value=min_date,
-                max_value=max_date,
+                value=st.session_state.get("historico_periodo_a", (default_a_start, default_a_end)),
+                min_value=min_date, max_value=max_date,
                 key="historico_periodo_a",
             )
         with col_b:
             periodo_b = st.date_input(
                 "Período B",
-                value=st.session_state.get(
-                    "historico_periodo_b",
-                    (default_b_start, max_date),
-                ),
-                min_value=min_date,
-                max_value=max_date,
+                value=st.session_state.get("historico_periodo_b", (default_b_start, max_date)),
+                min_value=min_date, max_value=max_date,
                 key="historico_periodo_b",
             )
 
@@ -76,10 +67,7 @@ def main() -> None:
         )
         limite = st.sidebar.slider(
             "Limite de velocidade (km/h)",
-            min_value=40,
-            max_value=140,
-            value=80,
-            step=5,
+            min_value=40, max_value=140, value=80, step=5,
             key="historico_limite_velocidade",
         )
 
@@ -95,15 +83,37 @@ def main() -> None:
         resumo_a = calcular_resumo_diario(dados_a, float(limite))
         resumo_b = calcular_resumo_diario(dados_b, float(limite))
 
+        label_a = f"{inicio_a:%d/%m/%Y} → {fim_a:%d/%m/%Y}"
+        label_b = f"{inicio_b:%d/%m/%Y} → {fim_b:%d/%m/%Y}"
+
+        # ── Header ────────────────────────────────────────────────
+        st.markdown(f"""
+        <div class="dash-header">
+            <div class="dash-header-left">
+                <div class="eyebrow">▸ Portal Logístico · Comparativo de Períodos</div>
+                <h1>Histórico <span>Comparativo</span></h1>
+            </div>
+            <div class="dash-header-right">
+                <div class="status-pill orange">◈ COMPARATIVO</div><br>
+                A: {label_a}<br>
+                B: {label_b}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ── KPIs dos dois períodos ────────────────────────────────
         col1, col2 = st.columns(2)
         with col1:
-            st.subheader("Período A")
-            renderizar_kpis(kpis_a, colunas=3)
+            st.markdown("<div class='section-label'>Período A</div>", unsafe_allow_html=True)
+            _renderizar_kpis_periodo(kpis_a)
         with col2:
-            st.subheader("Período B")
-            renderizar_kpis(kpis_b, colunas=3)
+            st.markdown("<div class='section-label'>Período B</div>", unsafe_allow_html=True)
+            _renderizar_kpis_periodo(kpis_b)
 
-        st.subheader("Variação do período B contra A")
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+        # ── Variação B vs A ───────────────────────────────────────
+        st.markdown("<div class='section-label'>Variação do período B contra A</div>", unsafe_allow_html=True)
         d1, d2, d3, d4 = st.columns(4)
         d1.metric("Km total", f"{kpis_b['total_km']:.1f} km", _delta(kpis_a["total_km"], kpis_b["total_km"]))
         d2.metric(
@@ -114,19 +124,32 @@ def main() -> None:
         d3.metric("Alertas", int(kpis_b["total_alertas"]), _delta(kpis_a["total_alertas"], kpis_b["total_alertas"]))
         d4.metric("Paradas", int(kpis_b["total_paradas"]), _delta(kpis_a["total_paradas"], kpis_b["total_paradas"]))
 
-        label_a = f"{inicio_a:%d/%m/%Y} a {fim_a:%d/%m/%Y}"
-        label_b = f"{inicio_b:%d/%m/%Y} a {fim_b:%d/%m/%Y}"
+        # ── Gráfico comparativo ───────────────────────────────────
+        st.markdown("<div class='section-label'>Comparativo por veículo</div>", unsafe_allow_html=True)
         st.plotly_chart(
-            grafico_comparativo(resumo_a, resumo_b, label_a, label_b), use_container_width=True,
+            grafico_comparativo(resumo_a, resumo_b, label_a, label_b),
+            use_container_width=True,
         )
+
     except Exception as exc:
         st.error(f"Não foi possível renderizar o histórico: {exc}")
 
 
+def _renderizar_kpis_periodo(kpis: dict) -> None:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(kpi_card_html("km total", f"{kpis['total_km']:.1f}", "km rodados", "green", "green"), unsafe_allow_html=True)
+    with col2:
+        st.markdown(kpi_card_html("vel. média", f"{kpis['velocidade_media']:.1f}", "km/h", "blue", "blue"), unsafe_allow_html=True)
+    col3, col4 = st.columns(2)
+    with col3:
+        st.markdown(kpi_card_html("alertas", f"{kpis['total_alertas']}", "excesso vel.", "orange", "orange"), unsafe_allow_html=True)
+    with col4:
+        st.markdown(kpi_card_html("paradas", f"{kpis['total_paradas']}", "no período", "muted", "white"), unsafe_allow_html=True)
+
+
 def _normalizar_periodo(periodo: object, min_date: object, max_date: object) -> tuple:
-    if isinstance(periodo, tuple) and len(periodo) == 2:
-        return periodo[0], periodo[1]
-    if isinstance(periodo, list) and len(periodo) == 2:
+    if isinstance(periodo, (tuple, list)) and len(periodo) == 2:
         return periodo[0], periodo[1]
     return min_date, max_date
 
@@ -139,6 +162,3 @@ def _delta(valor_a: float, valor_b: float) -> str:
 
 
 main()
-
-
-
