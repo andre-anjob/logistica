@@ -40,6 +40,6 @@ SPEED_BANDS = [
 # ── Geocerca da garagem ───────────────────────────────────────────────────────
 # Pontos dentro do raio são excluídos do cálculo de tempo parado em rota.
 # Altere as coordenadas para a localização real da sua garagem.
-GARAGEM_LATITUDE  = -3.8671613004029353
-GARAGEM_LONGITUDE = -38.50997409793451
+GARAGEM_LATITUDE  = -3.8682016092212366
+GARAGEM_LONGITUDE = -38.51095701719775
 GARAGEM_RAIO_M    = 50.0   # raio em metros
