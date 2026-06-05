@@ -36,3 +36,10 @@ SPEED_BANDS = [
     (40.0, 70.0, "yellow", "#f2c94c"),
     (70.0, float("inf"), "red", "#d73027"),
 ]
+
+# ── Geocerca da garagem ───────────────────────────────────────────────────────
+# Pontos dentro do raio são excluídos do cálculo de tempo parado em rota.
+# Altere as coordenadas para a localização real da sua garagem.
+GARAGEM_LATITUDE  = -3.8671613004029353
+GARAGEM_LONGITUDE = -38.50997409793451
+GARAGEM_RAIO_M    = 50.0   # raio em metros

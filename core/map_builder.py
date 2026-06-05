@@ -8,7 +8,16 @@ from typing import Any
 
 import pandas as pd
 
-from config import IS_STOP_COLUMN, LATITUDE_COLUMN, LONGITUDE_COLUMN, SPEED_BANDS, STOP_ID_COLUMN
+from config import (
+    GARAGEM_LATITUDE,
+    GARAGEM_LONGITUDE,
+    GARAGEM_RAIO_M,
+    IS_STOP_COLUMN,
+    LATITUDE_COLUMN,
+    LONGITUDE_COLUMN,
+    SPEED_BANDS,
+    STOP_ID_COLUMN,
+)
 from utils.helpers import ensure_directory
 
 try:
@@ -144,6 +153,9 @@ def build_pydeck_layers(
             )
         )
 
+    # Geocerca da garagem
+    layers.append(_camada_geocerca_garagem())
+
     # Pontos invisíveis e pickables para exibir velocidade ao passar o mouse
     layers.append(_camada_pontos_velocidade(route))
 
@@ -255,6 +267,7 @@ def build_pydeck_layers_multi(
         layers.append(_camada_pontos_velocidade(route))
 
         # Marcadores de início e fim do veículo
+
         if not route.empty:
             layers.append(_camada_marcadores(route, prefix=str(vehicle)))
 
@@ -273,6 +286,9 @@ def build_pydeck_layers_multi(
         layer_ignicao_on = _camada_ignicao_ligada(route, min_ignicao_on_min)
         if layer_ignicao_on is not None:
             layers.append(layer_ignicao_on)
+
+    # Geocerca da garagem (uma única vez para todos os veículos)
+    layers.append(_camada_geocerca_garagem())
 
     # Paradas de todos os veículos do dia
     if show_stops and not stops_df.empty:
@@ -481,6 +497,34 @@ def _camada_ignicao_desligada(
         pickable=True,
         stroked=True,
         filled=True,
+        auto_highlight=True,
+    )
+
+
+def _camada_geocerca_garagem() -> Any:
+    """ScatterplotLayer mostrando a geocerca da garagem no mapa.
+
+    Círculo branco semitransparente com borda tracejada para indicar
+    a área excluída do cálculo de tempo parado em rota.
+    """
+    data = [{
+        "lon": GARAGEM_LONGITUDE,
+        "lat": GARAGEM_LATITUDE,
+        "radius": GARAGEM_RAIO_M,
+        "titulo": "🏭 Garagem",
+        "detalhe": f"Cerca de {GARAGEM_RAIO_M:.0f} m — tempo parado aqui não contabilizado",
+    }]
+    return pdk.Layer(
+        "ScatterplotLayer",
+        data=data,
+        get_position=["lon", "lat"],
+        get_radius="radius",
+        get_fill_color=[255, 255, 255, 40],
+        get_line_color=[255, 255, 255, 180],
+        line_width_min_pixels=2,
+        stroked=True,
+        filled=True,
+        pickable=True,
         auto_highlight=True,
     )
 

@@ -174,6 +174,31 @@ def sanitize_filename(value: str) -> str:
     return safe or "rota"
 
 
+def distancia_haversine_metros(
+    lat1: float, lon1: float,
+    lat2: float, lon2: float,
+) -> float:
+    """Calcula a distância em metros entre duas coordenadas via haversine.
+
+    Args:
+        lat1, lon1: Coordenadas do ponto A.
+        lat2, lon2: Coordenadas do ponto B.
+
+    Returns:
+        Distância em metros.
+    """
+    R = 6_371_008.8
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
+    return 2 * R * math.asin(math.sqrt(a))
+
+
 def ensure_directory(path: str | Path) -> Path:
     """Cria uma pasta quando ela ainda não existe.
 

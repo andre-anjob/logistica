@@ -9,7 +9,16 @@ import pydeck as pdk
 import streamlit as st
 from utils.styles import aplicar_estilos
 
-from config import LATITUDE_COLUMN, LONGITUDE_COLUMN, ROUTE_DATE_COLUMN
+import numpy as np
+
+from config import (
+    GARAGEM_LATITUDE,
+    GARAGEM_LONGITUDE,
+    GARAGEM_RAIO_M,
+    LATITUDE_COLUMN,
+    LONGITUDE_COLUMN,
+    ROUTE_DATE_COLUMN,
+)
 from core.cache_manager import dados_disponiveis
 from core.database import consultar_dados, consultar_periodo, inicializar_banco
 from core.map_builder import (
@@ -267,38 +276,51 @@ def _renderizar_cards_rota(summary: dict, stats: dict) -> None:
         h, r = divmod(int(max(seg, 0)), 3600)
         return f"{h:02d}:{r // 60:02d}"
 
-    # --- Calcular janela de rota (primeiro → último movimento) ---
+    # --- Geocerca da garagem + cálculo de tempo parado em rota ---
     hora_saida   = inicio.strftime("%H:%M") if inicio else "—"
     hora_retorno = fim.strftime("%H:%M")    if fim    else "—"
     t_par_rota   = t_par  # fallback: valor original
 
     rota_df = summary.get("rota")
     if rota_df is not None and len(rota_df) > 1:
-        vel_s = rota_df["Velocidade"].astype(float)
-        em_mov = rota_df.loc[vel_s > 0, "Data da Coordenada"]
-        if len(em_mov) >= 2:
-            primeiro_mov = em_mov.min()
-            ultimo_mov   = em_mov.max()
-            hora_saida   = primeiro_mov.strftime("%H:%M")
-            hora_retorno = ultimo_mov.strftime("%H:%M")
+        lats = rota_df[LATITUDE_COLUMN].astype(float).values
+        lons = rota_df[LONGITUDE_COLUMN].astype(float).values
 
-            # Pontos entre primeiro e último movimento
-            janela = rota_df[
-                (rota_df["Data da Coordenada"] >= primeiro_mov)
-                & (rota_df["Data da Coordenada"] <= ultimo_mov)
-            ].copy()
+        # Distância vetorizada de cada ponto à garagem (haversine em metros)
+        R = 6_371_008.8
+        dlat = np.radians(lats - GARAGEM_LATITUDE)
+        dlon = np.radians(lons - GARAGEM_LONGITUDE)
+        a = (
+            np.sin(dlat / 2) ** 2
+            + np.cos(np.radians(GARAGEM_LATITUDE))
+            * np.cos(np.radians(lats))
+            * np.sin(dlon / 2) ** 2
+        )
+        dist_garagem = 2 * R * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
+        fora_cerca = dist_garagem > GARAGEM_RAIO_M
+
+        # Considera apenas pontos fora da geocerca
+        fora_df = rota_df[fora_cerca].copy()
+
+        if len(fora_df) >= 2:
+            hora_saida   = fora_df["Data da Coordenada"].min().strftime("%H:%M")
+            hora_retorno = fora_df["Data da Coordenada"].max().strftime("%H:%M")
+
+            t_em_rota = (
+                fora_df["Data da Coordenada"].max()
+                - fora_df["Data da Coordenada"].min()
+            ).total_seconds()
 
             deltas = (
-                janela["Data da Coordenada"]
+                fora_df["Data da Coordenada"]
                 .diff()
                 .dt.total_seconds()
                 .clip(lower=0)
                 .fillna(0)
             )
-            vel_janela = janela["Velocidade"].astype(float)
-            t_em_rota   = (ultimo_mov - primeiro_mov).total_seconds()
-            t_mov_rota  = float(deltas[vel_janela > 0].sum())
-            t_par_rota  = max(t_em_rota - t_mov_rota, 0)
+            vel_fora = fora_df["Velocidade"].astype(float)
+            t_mov_rota = float(deltas[vel_fora > 0].sum())
+            t_par_rota = max(t_em_rota - t_mov_rota, 0)
 
     dur_par = f"{dur_med:.0f} min" if paradas else "—"
 
